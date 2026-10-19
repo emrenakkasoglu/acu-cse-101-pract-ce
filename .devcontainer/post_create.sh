@@ -17,6 +17,10 @@ git config --global core.autocrlf input
 chmod +x scripts/*.py 2>/dev/null || true
 
 # Ensure student starts on the 'workspace' branch, keeping 'main' pristine
-git checkout -B workspace 2>/dev/null || true
+if git show-ref --verify --quiet refs/heads/workspace; then
+    git checkout workspace
+else
+    git checkout -b workspace
+fi
 
 echo "✅ ACU CSE 101 Environment Ready!"

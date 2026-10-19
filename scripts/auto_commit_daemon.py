@@ -8,12 +8,19 @@ git commands.
 """
 
 import datetime
+import fcntl
 import os
 import subprocess
 import sys
 import time
 
+try:
+    from .sync_course import workspace_lock
+except ImportError:
+    from sync_course import workspace_lock
+
 WATCH_INTERVAL_SECONDS = 3.0
+COURSE_SYNC_INTERVAL_SECONDS = 300.0
 
 
 def is_git_repo(repo_dir: str) -> bool:
@@ -92,7 +99,10 @@ def perform_auto_commit(
         curr_branch = get_current_branch(repo_dir)
         if curr_branch == "main":
             subprocess.run(
-                ["git", "checkout", "-B", "workspace"],
+                ["git", "checkout", "workspace"] if subprocess.run(
+                    ["git", "show-ref", "--verify", "--quiet", "refs/heads/workspace"],
+                    cwd=repo_dir, capture_output=True, check=False,
+                ).returncode == 0 else ["git", "checkout", "-b", "workspace"],
                 cwd=repo_dir,
                 capture_output=True,
                 check=False,
@@ -144,9 +154,39 @@ def perform_auto_commit(
         return False
 
 
+def synchronize_course(repo_dir: str, verbose: bool = False) -> bool:
+    """Load the latest sync script each time; retry failures on the next interval."""
+    result = subprocess.run(
+        [sys.executable, os.path.join(repo_dir, "scripts", "sync_course.py")],
+        cwd=repo_dir, capture_output=True, text=True, check=False,
+    )
+    if result.returncode != 0:
+        log_message(repo_dir, f"Course sync will retry: {result.stdout.strip()} {result.stderr.strip()}", verbose)
+        return False
+    log_message(repo_dir, "Course materials synchronized automatically.", verbose)
+    return True
+
+
 def main():
     verbose = "--verbose" in sys.argv or "-v" in sys.argv
     repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+    # Only one watcher should own this repository after repeated starts.
+    git_dir_result = subprocess.run(
+        ["git", "rev-parse", "--absolute-git-dir"], cwd=repo_dir,
+        capture_output=True, text=True, check=False,
+    )
+    if git_dir_result.returncode != 0:
+        return
+    with open(os.path.join(git_dir_result.stdout.strip(), "course-daemon.lock"), "a") as daemon_lock:
+        try:
+            fcntl.flock(daemon_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
+        watch_workspace(repo_dir, verbose)
+
+
+def watch_workspace(repo_dir: str, verbose: bool):
 
     # If git user is not configured, set default course identity
     try:
@@ -173,17 +213,23 @@ def main():
 
     log_message(repo_dir, "Auto-commit daemon started.", verbose)
 
+    next_course_sync = 0.0
     while True:
         try:
             if is_git_repo(repo_dir):
+                if time.monotonic() >= next_course_sync:
+                    synchronize_course(repo_dir, verbose)
+                    next_course_sync = time.monotonic() + COURSE_SYNC_INTERVAL_SECONDS
                 changed = get_git_status(repo_dir)
                 if changed:
-                    perform_auto_commit(repo_dir, changed, verbose=verbose)
+                    with workspace_lock(repo_dir):
+                        perform_auto_commit(repo_dir, changed, verbose=verbose)
             time.sleep(WATCH_INTERVAL_SECONDS)
         except KeyboardInterrupt:
             log_message(repo_dir, "Auto-commit daemon stopped.", verbose)
             sys.exit(0)
-        except OSError:
+        except (OSError, RuntimeError) as error:
+            log_message(repo_dir, f"Background operation will retry: {error}", verbose)
             time.sleep(WATCH_INTERVAL_SECONDS)
 
 

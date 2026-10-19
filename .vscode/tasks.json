@@ -2,6 +2,20 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "python3 scripts/submit.py --test-only",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
       "label": "Submit",
       "type": "shell",
       "command": "python3 scripts/submit.py",
@@ -13,20 +27,6 @@
       },
       "group": {
         "kind": "build",
-        "isDefault": true
-      }
-    },
-    {
-      "label": "Run Tests",
-      "type": "shell",
-      "command": "python3 scripts/submit.py --test-only",
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "group": {
-        "kind": "test",
         "isDefault": true
       }
     },

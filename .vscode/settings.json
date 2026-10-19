@@ -43,26 +43,12 @@
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.autoTestDiscoverOnSaveEnabled": true,
-  "tasks.statusBar": [
-    {
-      "label": "$(pass) Run Tests",
-      "task": "Run Tests",
-      "tooltip": "Run automated unit tests to verify your code"
-    },
-    {
-      "label": "$(cloud-upload) Submit",
-      "task": "Submit",
-      "tooltip": "Submit your practice code to the TA review system"
-    },
-    {
-      "label": "$(sync) Sync Course",
-      "task": "Sync Course",
-      "tooltip": "Pull new weekly challenges from the course"
-    },
-    {
-      "label": "$(play) Play",
-      "task": "Play",
-      "tooltip": "Run current Python file"
-    }
-  ]
+  "tasks.statusbar.displayMode": "menu",
+  "tasks.statusbar.alignment": "left",
+  "tasks.statusbar.menu.label": "Course Tasks",
+  "tasks.statusbar.menu.icon": "checklist",
+  "tasks.statusbar.menu.showActionsButton": false,
+  "tasks.statusbar.default.hide": false,
+  "tasks.statusbar.hiddenTasks": [],
+  "tasks.statusbar.menu.hiddenTasks": []
 }
