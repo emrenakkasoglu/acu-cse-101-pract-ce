@@ -13,6 +13,7 @@ bash "$ROOT/scripts/check_environment.sh" --packages
 # Configure safe git defaults for students
 git config --global pull.rebase false
 git config --global core.autocrlf input
+git config core.filemode false
 if ! git config user.name >/dev/null 2>&1; then
     git config --global user.name "CSE 101 Student"
     git config --global user.email "student@cse101.acibadam.edu.tr"
@@ -27,9 +28,7 @@ if ! git remote get-url upstream >/dev/null 2>&1; then
 fi
 
 # Ensure student starts on the 'workspace' branch, keeping 'main' pristine
-if git show-ref --verify --quiet refs/heads/workspace; then
-    git checkout workspace
-else
+if ! git checkout workspace >/dev/null 2>&1; then
     git checkout -b workspace
 fi
 

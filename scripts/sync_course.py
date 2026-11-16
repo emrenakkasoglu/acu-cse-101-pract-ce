@@ -89,12 +89,9 @@ def switch_to_workspace(repo_dir: str) -> str:
     if current_branch != "main":
         return current_branch
 
-    workspace_exists = run_git(
-        ["show-ref", "--verify", "--quiet", f"refs/heads/{STUDENT_WORK_BRANCH}"],
-        repo_dir,
-    ).returncode == 0
-    command = ["checkout", STUDENT_WORK_BRANCH] if workspace_exists else ["checkout", "-b", STUDENT_WORK_BRANCH]
-    checkout_res = run_git(command, repo_dir)
+    checkout_res = run_git(["checkout", STUDENT_WORK_BRANCH], repo_dir)
+    if checkout_res.returncode != 0:
+        checkout_res = run_git(["checkout", "-b", STUDENT_WORK_BRANCH], repo_dir)
     if checkout_res.returncode != 0:
         raise RuntimeError(checkout_res.stderr.strip() or "Unable to open the student workspace.")
     return STUDENT_WORK_BRANCH
@@ -128,6 +125,11 @@ def sync_course(repo_dir: str):
     if status_res.stdout.strip():
         print("💾 Auto-saving current work before synchronization...")
         checked_git(["commit", "-m", "Auto-save before course sync", "--", "exercises/"], repo_dir)
+
+    # Discard any accidental modifications or filemode changes to course scripts
+    # so newly released upstream materials merge cleanly without blocking students.
+    run_git(["config", "core.filemode", "false"], repo_dir)
+    run_git(["checkout", "HEAD", "--", "scripts/"], repo_dir)
 
     # 2. Fetch the latest released weekly modules from upstream main
     print("📡 Checking for newly released challenges and workshops from upstream...")
